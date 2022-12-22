@@ -8,6 +8,7 @@ using UnityEngine.Networking;
 using System.IO;
 using UnityEngine.UI;
 using System.Net.Sockets;
+using Unity.VisualScripting;
 
 public class NetworkServer : MonoBehaviour
 {
@@ -35,12 +36,24 @@ public class NetworkServer : MonoBehaviour
     // Start is called before the first frame update
     private void Start()
     {
-        RunServer();
+        Debug.Log("\nLocal IP: " + LocalIPAddress() + "\nPort:" + _socketPort);
+    }
 
-        Debug.Log(
-            "Local IP: " + LocalIPAddress() + 
-            "\nPort:" + _socketPort
-            );
+    // Update is called once per frame
+    [Obsolete]
+    private void Update()
+    {
+        while (!NetworkTransport.IsStarted)
+        {
+            RunServer();
+        }
+
+        UpdateNetworkConnection();
+
+        if (Input.GetKeyDown(KeyCode.S))
+        {
+            SendMessageToClient("\nI am your server! Your ID: " + recHostID, recConnectionID);
+        }
     }
 
     private void RunServer()
@@ -62,17 +75,8 @@ public class NetworkServer : MonoBehaviour
         Debug.Log("Server is online! : " + gameObject);
     }
 
-    // Update is called once per frame
-    [Obsolete]
-    private void Update()
-    {
-        UpdateNetworkConnection();
-
-        if (Input.GetKeyDown(KeyCode.S))
-        {
-            SendMessageToClient("Message from server:\n>>> RecHostID: " + recHostID, recConnectionID);
-        }
-    }
+    
+    
 
     [Obsolete("Obsolete")]
     private void UpdateNetworkConnection()
@@ -91,49 +95,32 @@ public class NetworkServer : MonoBehaviour
             case NetworkEventType.Nothing:
                 break;
             case NetworkEventType.ConnectEvent:
-                Debug.Log("Client connected! Connection ID: " + recConnectionID);
-                SendMessageToClient("Message from server:\n>>> RecHostID: " + recHostID, recConnectionID);
+                Debug.Log("Client connected! Connection ID: " + recConnectionID + gameObject);
+                SendMessageToClient("You are connected to the server! Your ID: " + recConnectionID, recConnectionID);
                 break;
             case NetworkEventType.DataEvent:
                 var msg = Encoding.Unicode.GetString(recBuffer, 0, dataSize);
-                ProcessRecievedMsg(msg, recConnectionID);
+                Debug.Log("Client id: " + recConnectionID + "\nMessage: " + msg);  
                 break;
             case NetworkEventType.DisconnectEvent:
-                Debug.Log("Client disconnected! Connection ID: " + recConnectionID);
+                Debug.Log("Client disconnected! Connection ID: " + recConnectionID + gameObject);
                 break;
         }
     }
 
+
+
     [Obsolete]
     public void SendMessageToClient(string msg, int id)
     {
-        Debug.Log("Message sent!");
         byte error = 0;
         var buffer = Encoding.Unicode.GetBytes(msg);
         NetworkTransport.Send(_hostID, id, _reliableChannelID, buffer, msg.Length * sizeof(char), out error);
+        Debug.Log("Message sent!" + gameObject);
     }
 
-    private void ProcessRecievedMsg(string msg, int id)
-    {
-        Debug.Log("Client (id: " + id + ") sent a message: \n>>>" + msg);
-    }
 
-    private void Login()
-    {
-    }
-
-    private void ReadUserLoginReq(string login, string pw)
-    {
-        Debug.Log
-        (
-            "Logging in user... \nUser ID: " +
-            login +
-            "User Password: " +
-            pw
-        );
-    }
-
-    public static string LocalIPAddress()
+    private static string LocalIPAddress()
     {
         IPHostEntry host;
         string localIP = "0.0.0.0";
